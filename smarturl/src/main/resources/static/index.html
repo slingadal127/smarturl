@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>SmartURL</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap');
+        * { margin:0; padding:0; box-sizing:border-box; }
+
+        :root {
+            --ink: #0a0a0a;
+            --paper: #faf9f6;
+            --accent: #e85d26;
+            --muted: #8a8680;
+            --border: #e8e5e0;
+            --card: #ffffff;
+        }
+
+        body { font-family:'Inter',sans-serif; background:var(--paper); color:var(--ink); min-height:100vh; }
+
+        /* Top bar */
+        .topbar {
+            border-bottom:2px solid var(--ink);
+            display:flex; align-items:center; justify-content:space-between;
+            padding:0 40px; height:56px; background:var(--paper);
+            position:sticky; top:0; z-index:100;
+        }
+        .topbar-left { display:flex; align-items:center; gap:32px; }
+        .brand { font-family:'Instrument Serif',serif; font-size:22px; color:var(--ink); letter-spacing:-0.5px; }
+        .brand span { color:var(--accent); }
+        .nav-links { display:flex; gap:2px; }
+        .nav-btn { background:none; border:none; color:var(--muted); padding:6px 14px; cursor:pointer; font-size:13px; font-weight:500; font-family:'Inter',sans-serif; border-radius:4px; transition:all 0.15s; }
+        .nav-btn:hover { color:var(--ink); background:#f0ede8; }
+        .nav-btn.active { color:var(--paper); background:var(--ink); }
+        .nav-btn.out { color:var(--accent); }
+        .topbar-right { font-size:12px; color:var(--muted); }
+
+        /* Layout */
+        .page { max-width:900px; margin:0 auto; padding:0 40px 80px; }
+
+        /* HOME */
+        .home-hero {
+            border-bottom:1px solid var(--border);
+            padding:64px 0 48px;
+            display:grid; grid-template-columns:1fr 1fr; gap:48px; align-items:end;
+        }
+        .hero-left h1 {
+            font-family:'Instrument Serif',serif;
+            font-size:72px; line-height:0.95; letter-spacing:-2px;
+            color:var(--ink); margin-bottom:20px;
+        }
+        .hero-left h1 em { font-style:italic; color:var(--accent); }
+        .hero-left p { font-size:14px; color:var(--muted); line-height:1.7; max-width:280px; }
+        .hero-right { padding-bottom:8px; }
+        .hero-stat { margin-bottom:24px; }
+        .hero-stat .num { font-family:'Instrument Serif',serif; font-size:48px; color:var(--ink); line-height:1; }
+        .hero-stat .lbl { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px; margin-top:4px; }
+        .hero-divider { width:40px; height:2px; background:var(--accent); margin-bottom:24px; }
+
+        /* Input section */
+        .input-section { padding:40px 0; border-bottom:1px solid var(--border); }
+        .input-label { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:2px; margin-bottom:16px; }
+        .input-row { display:flex; gap:0; border:2px solid var(--ink); border-radius:0; }
+        .url-input {
+            flex:1; border:none; outline:none; background:transparent;
+            font-size:15px; color:var(--ink); font-family:'Inter',sans-serif;
+            padding:16px 20px;
+        }
+        .url-input::placeholder { color:#c8c4be; }
+        .btn-shorten {
+            background:var(--ink); color:var(--paper); border:none;
+            padding:16px 32px; font-size:13px; font-weight:700;
+            cursor:pointer; font-family:'Inter',sans-serif;
+            text-transform:uppercase; letter-spacing:1px; transition:background 0.15s;
+            white-space:nowrap;
+        }
+        .btn-shorten:hover { background:var(--accent); }
+        .btn-shorten:disabled { background:#c8c4be; cursor:not-allowed; }
+
+        /* Result */
+        .result-section { padding:28px 0; border-bottom:1px solid var(--border); }
+        .result-tag { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:14px; }
+        .tag-safe { color:#16a34a; }
+        .tag-blocked { color:var(--accent); }
+        .result-url { font-family:'Instrument Serif',serif; font-size:36px; color:var(--ink); text-decoration:none; letter-spacing:-0.5px; display:block; margin-bottom:10px; }
+        .result-url:hover { color:var(--accent); }
+        .result-meta-row { display:flex; align-items:center; gap:16px; }
+        .copy-btn { background:none; border:1px solid var(--border); color:var(--muted); padding:6px 16px; cursor:pointer; font-size:12px; font-weight:600; font-family:'Inter',sans-serif; transition:all 0.15s; }
+        .copy-btn:hover { border-color:var(--ink); color:var(--ink); }
+        .result-expire { font-size:12px; color:var(--muted); }
+        .blocked-msg { font-family:'Instrument Serif',serif; font-size:24px; color:var(--accent); font-style:italic; }
+        .ml-strip { display:flex; gap:32px; margin-top:16px; padding-top:16px; border-top:1px solid var(--border); }
+        .ml-item .ml-lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:4px; }
+        .ml-item .ml-val { font-size:20px; font-weight:700; color:var(--ink); }
+        .ml-item .ml-val.danger { color:var(--accent); }
+        .ml-item .ml-val.safe { color:#16a34a; }
+        .bar-track { width:120px; height:3px; background:var(--border); margin-top:6px; }
+        .bar-fill { height:3px; transition:width 0.5s; }
+
+        /* AUTH */
+        .auth-page { padding:64px 0; display:grid; grid-template-columns:1fr 1fr; gap:80px; align-items:start; }
+        .auth-left h2 { font-family:'Instrument Serif',serif; font-size:48px; line-height:1.05; letter-spacing:-1px; margin-bottom:16px; }
+        .auth-left h2 em { font-style:italic; color:var(--accent); }
+        .auth-left p { font-size:13px; color:var(--muted); line-height:1.7; }
+        .auth-form { padding-top:8px; }
+        .field-label { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:8px; display:block; }
+        .field-input { width:100%; border:none; border-bottom:2px solid var(--border); background:transparent; color:var(--ink); padding:10px 0; font-size:15px; outline:none; font-family:'Inter',sans-serif; margin-bottom:24px; transition:border-color 0.15s; }
+        .field-input:focus { border-color:var(--ink); }
+        .field-input::placeholder { color:#c8c4be; }
+        .btn-submit { background:var(--ink); color:var(--paper); border:none; padding:14px 40px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Inter',sans-serif; text-transform:uppercase; letter-spacing:1.5px; transition:background 0.15s; }
+        .btn-submit:hover { background:var(--accent); }
+        .btn-submit:disabled { background:#c8c4be; cursor:not-allowed; }
+        .auth-switch-row { margin-top:20px; font-size:13px; color:var(--muted); }
+        .auth-switch-row b { color:var(--ink); cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+        .err-row { font-size:13px; color:var(--accent); margin-bottom:16px; font-style:italic; }
+
+        /* ANALYTICS */
+        .analytics-header { padding:40px 0 32px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:end; }
+        .analytics-header h1 { font-family:'Instrument Serif',serif; font-size:48px; letter-spacing:-1.5px; }
+        .analytics-header p { font-size:13px; color:var(--muted); }
+        .url-table { width:100%; border-collapse:collapse; margin:28px 0; }
+        .url-table th { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted); text-align:left; padding:0 0 12px; border-bottom:2px solid var(--ink); }
+        .url-table td { padding:16px 0; border-bottom:1px solid var(--border); vertical-align:middle; }
+        .url-table tr { cursor:pointer; transition:background 0.1s; }
+        .url-table tr:hover td { background:#f5f2ed; }
+        .url-table tr.sel td { background:#fff8f5; }
+        .url-code-cell { font-family:'Instrument Serif',serif; font-size:20px; color:var(--accent); }
+        .url-dest-cell { font-size:12px; color:var(--muted); max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .url-clicks-cell { font-family:'Instrument Serif',serif; font-size:24px; color:var(--ink); text-align:right; }
+
+        .detail-panel { padding:32px 0; border-top:2px solid var(--ink); }
+        .detail-heading { font-family:'Instrument Serif',serif; font-size:28px; letter-spacing:-0.5px; margin-bottom:24px; }
+        .stat-trio { display:grid; grid-template-columns:repeat(3,1fr); gap:0; margin-bottom:28px; }
+        .stat-trio-item { padding:16px 20px; border-right:1px solid var(--border); }
+        .stat-trio-item:first-child { padding-left:0; }
+        .stat-trio-item:last-child { border-right:none; }
+        .stat-trio-num { font-family:'Instrument Serif',serif; font-size:36px; color:var(--ink); }
+        .stat-trio-lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px; margin-top:4px; }
+        .chart-area { height:180px; position:relative; margin-bottom:28px; }
+        .breakdown-trio { display:grid; grid-template-columns:repeat(3,1fr); gap:24px; }
+        .bd-col h4 { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted); margin-bottom:12px; }
+        .bd-row { display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--border); font-size:13px; }
+        .bd-row:last-child { border-bottom:none; }
+        .bd-k { color:var(--muted); }
+        .bd-v { font-weight:700; }
+
+        /* ML PAGE */
+        .ml-header { padding:40px 0 32px; border-bottom:1px solid var(--border); }
+        .ml-header h1 { font-family:'Instrument Serif',serif; font-size:48px; letter-spacing:-1.5px; margin-bottom:8px; }
+        .ml-header p { font-size:13px; color:var(--muted); }
+        .model-compare { display:grid; grid-template-columns:1fr 1fr; gap:0; margin:32px 0; border:2px solid var(--ink); }
+        .model-col { padding:28px; }
+        .model-col:first-child { border-right:2px solid var(--ink); }
+        .model-col h3 { font-family:'Instrument Serif',serif; font-size:28px; letter-spacing:-0.5px; margin-bottom:4px; }
+        .model-sub { font-size:11px; color:var(--muted); margin-bottom:20px; }
+        .metric-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border); }
+        .metric-row:last-child { border-bottom:none; }
+        .metric-k { font-size:13px; color:var(--muted); }
+        .metric-v { font-size:15px; font-weight:700; }
+        .win-pill { background:var(--accent); color:#fff; font-size:8px; font-weight:800; padding:2px 7px; border-radius:2px; margin-left:8px; letter-spacing:1px; text-transform:uppercase; }
+
+        .live-section { padding:32px 0; border-top:1px solid var(--border); border-bottom:1px solid var(--border); margin-bottom:32px; }
+        .live-section h3 { font-family:'Instrument Serif',serif; font-size:28px; letter-spacing:-0.5px; margin-bottom:20px; }
+        .classify-result { margin-top:20px; padding:20px; border:1px solid var(--border); }
+        .classify-result.bad { border-color:var(--accent); background:#fff8f5; }
+        .classify-result.good { border-color:#16a34a; background:#f0fdf4; }
+        .classify-models { display:flex; gap:40px; margin-top:16px; padding-top:16px; border-top:1px solid var(--border); }
+        .c-model-lbl { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted); margin-bottom:6px; }
+        .c-model-val { font-size:24px; font-weight:700; }
+        .c-model-val.hi { color:var(--accent); }
+        .c-model-val.lo { color:#16a34a; }
+        .triggers { font-size:12px; color:var(--muted); margin-top:12px; font-style:italic; }
+
+        .train-facts { display:grid; grid-template-columns:repeat(3,1fr); gap:0; border:1px solid var(--border); }
+        .fact { padding:20px; border-right:1px solid var(--border); text-align:center; }
+        .fact:last-child { border-right:none; }
+        .fact-num { font-family:'Instrument Serif',serif; font-size:32px; color:var(--ink); }
+        .fact-lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px; margin-top:4px; }
+
+        .empty-state { padding:48px 0; text-align:center; color:var(--muted); font-style:italic; font-family:'Instrument Serif',serif; font-size:20px; }
+    </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+    const API = 'http://localhost:8082';
+    const ML  = 'http://localhost:8083';
+
+    function App() {
+        const [page, setPage] = useState('home');
+        const [user, setUser] = useState(null);
+        const now = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+        const logout = () => { setUser(null); setPage('home'); };
+        return (
+            <div>
+                <div className="topbar">
+                    <div className="topbar-left">
+                        <div className="brand">Smart<span>URL</span></div>
+                        <div className="nav-links">
+                            <button className={`nav-btn ${page==='home'?'active':''}`} onClick={()=>setPage('home')}>Shorten</button>
+                            {user && <button className={`nav-btn ${page==='analytics'?'active':''}`} onClick={()=>setPage('analytics')}>Analytics</button>}
+                            <button className={`nav-btn ${page==='ml'?'active':''}`} onClick={()=>setPage('ml')}>ML Models</button>
+                            {!user
+                                ? <button className={`nav-btn ${page==='auth'?'active':''}`} onClick={()=>setPage('auth')}>Sign In</button>
+                                : <button className="nav-btn out" onClick={logout}>← {user.email.split('@')[0]}</button>}
+                        </div>
+                    </div>
+                    <div className="topbar-right">{now}</div>
+                </div>
+
+                {page==='home'      && <HomePage user={user}/>}
+                {page==='auth'      && <AuthPage onAuth={u=>{setUser(u);setPage('home');}}/>}
+                {page==='analytics' && <AnalyticsPage user={user}/>}
+                {page==='ml'        && <MLPage/>}
+            </div>
+        );
+    }
+
+    function HomePage({ user }) {
+        const [url, setUrl] = useState('');
+        const [result, setResult] = useState(null);
+        const [loading, setLoading] = useState(false);
+        const [copied, setCopied] = useState(false);
+
+        const shorten = async () => {
+            if (!url.trim()) return;
+            setLoading(true); setResult(null);
+            try {
+                const res = await fetch(`${API}/api/v1/urls/shorten`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({originalUrl:url,userId:user?.userId?.toString()})});
+                setResult(await res.json());
+            } catch(e){setResult({error:true});}
+            setLoading(false);
+        };
+        const copy = () => { navigator.clipboard.writeText(result.shortUrl); setCopied(true); setTimeout(()=>setCopied(false),2000); };
+
+        return (
+            <div className="page">
+                <div className="home-hero">
+                    <div className="hero-left">
+                        <h1>Shorten.<br/><em>Scan.</em><br/>Share.</h1>
+                        <p>Every URL screened by a dual ML classifier — Random Forest + Neural Network trained on 549,000 real phishing URLs.</p>
+                    </div>
+                    <div className="hero-right">
+                        <div className="hero-divider"/>
+                        <div className="hero-stat">
+                            <div className="num">549k</div>
+                            <div className="lbl">Phishing URLs in training set</div>
+                        </div>
+                        <div className="hero-stat">
+                            <div className="num">87.97%</div>
+                            <div className="lbl">Random Forest accuracy</div>
+                        </div>
+                        <div className="hero-stat">
+                            <div className="num">&lt;5ms</div>
+                            <div className="lbl">Redis-cached redirect latency</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="input-section">
+                    <div className="input-label">Paste your URL</div>
+                    <div className="input-row">
+                        <input className="url-input" value={url} onChange={e=>setUrl(e.target.value)} onKeyDown={e=>e.key==='Enter'&&shorten()} placeholder="https://example.com/very/long/path/that/needs/shortening"/>
+                        <button className="btn-shorten" onClick={shorten} disabled={loading}>{loading?'Scanning…':'Shorten →'}</button>
+                    </div>
+                    {!user && <p style={{fontSize:11,color:'var(--muted)',marginTop:10}}>Register for analytics & permanent links.</p>}
+                </div>
+
+                {result && !result.error && (
+                    <div className="result-section">
+                        {result.safe ? (
+                            <>
+                                <div className="result-tag tag-safe">● Safe</div>
+                                <a className="result-url" href={result.shortUrl} target="_blank">{result.shortUrl}</a>
+                                <div className="result-meta-row">
+                                    <button className="copy-btn" onClick={copy}>{copied?'Copied ✓':'Copy link'}</button>
+                                    <span className="result-expire">{result.expiresAt?`Expires ${result.expiresAt}`:'Never expires'}</span>
+                                </div>
+                                <div className="ml-strip">
+                                    {[['Random Forest',result.mlConfidence],['Neural Network',result.mlConfidence]].map(([n,c])=>(
+                                        <div key={n} className="ml-item">
+                                            <div className="ml-lbl">{n}</div>
+                                            <div className={`ml-val ${c>0.5?'danger':'safe'}`}>{(c*100).toFixed(1)}%</div>
+                                            <div className="bar-track"><div className="bar-fill" style={{width:`${c*100}%`,background:c>0.5?'var(--accent)':'#16a34a'}}/></div>
+                                        </div>
+                                    ))}
+                                    <div className="ml-item">
+                                        <div className="ml-lbl">Verdict</div>
+                                        <div className="ml-val safe">Safe to share</div>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="result-tag tag-blocked">✕ Blocked</div>
+                                <div className="blocked-msg">"{url.slice(0,60)}{url.length>60?'…':''}"<br/>was flagged as malicious.</div>
+                                <p style={{fontSize:13,color:'var(--muted)',marginTop:12}}>{result.safetyMessage}</p>
+                            </>
+                        )}
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    function AuthPage({ onAuth }) {
+        const [isLogin, setIsLogin] = useState(true);
+        const [email, setEmail] = useState('');
+        const [pw, setPw] = useState('');
+        const [error, setError] = useState('');
+        const [loading, setLoading] = useState(false);
+
+        const submit = async () => {
+            setError(''); setLoading(true);
+            try {
+                const res = await fetch(`${API}/api/v1/auth/${isLogin?'login':'register'}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pw})});
+                const d = await res.json();
+                if (d.token) onAuth({email:d.email,userId:d.userId});
+                else setError(d.message||'Something went wrong');
+            } catch(e){setError('Connection error');}
+            setLoading(false);
+        };
+
+        return (
+            <div className="page">
+                <div className="auth-page">
+                    <div className="auth-left">
+                        <h2>{isLogin?<>Welcome<br/><em>back.</em></>:<>Create<br/><em>account.</em></>}</h2>
+                        <p>{isLogin?'Sign in to access your analytics dashboard and manage your shortened URLs.':'Register for permanent links that never expire and a full click analytics dashboard.'}</p>
+                    </div>
+                    <div className="auth-form">
+                        {error && <div className="err-row">{error}</div>}
+                        <label className="field-label">Email</label>
+                        <input className="field-input" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com"/>
+                        <label className="field-label">Password</label>
+                        <input className="field-input" type="password" value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={e=>e.key==='Enter'&&submit()} placeholder="••••••••"/>
+                        <button className="btn-submit" onClick={submit} disabled={loading}>{loading?'Please wait…':(isLogin?'Sign In →':'Create Account →')}</button>
+                        <div className="auth-switch-row">
+                            {isLogin?"No account? ":"Have an account? "}
+                            <b onClick={()=>{setIsLogin(!isLogin);setError('');}}>{isLogin?'Register free':'Sign in'}</b>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    function AnalyticsPage({ user }) {
+        const [urls, setUrls] = useState([]);
+        const [sel, setSel] = useState(null);
+        const [analytics, setAnalytics] = useState(null);
+        const [loading, setLoading] = useState(true);
+        const chartRef = useRef(null);
+        const chartInst = useRef(null);
+
+        useEffect(()=>{ fetch(`${API}/api/v1/urls/user/${user.userId}`).then(r=>r.json()).then(setUrls).finally(()=>setLoading(false)); },[]);
+        useEffect(()=>{ if (!sel) return; fetch(`${API}/api/v1/urls/${sel}/analytics`).then(r=>r.json()).then(setAnalytics); },[sel]);
+        useEffect(()=>{
+            if (!analytics||!chartRef.current) return;
+            if (chartInst.current) chartInst.current.destroy();
+            const pts = analytics.clicksOverTime||[];
+            chartInst.current = new Chart(chartRef.current,{
+                type:'bar',
+                data:{labels:pts.map(p=>p.date),datasets:[{label:'Clicks',data:pts.map(p=>p.clicks),backgroundColor:'#e85d26',borderRadius:4,borderSkipped:false}]},
+                options:{responsive:true,maintainAspectRatio:false,animation:false,
+                    plugins:{legend:{display:false}},
+                    scales:{x:{ticks:{color:'#8a8680',font:{size:10,family:'Inter'}},grid:{display:false}},y:{ticks:{color:'#8a8680',font:{size:10,family:'Inter'}},grid:{color:'#e8e5e0'}}}}
+            });
+        },[analytics]);
+
+        if (loading) return <div className="page"><div className="empty-state">Loading…</div></div>;
+        return (
+            <div className="page">
+                <div className="analytics-header">
+                    <div><h1>Your URLs</h1></div>
+                    <p>{urls.length} link{urls.length!==1?'s':''}</p>
+                </div>
+
+                {urls.length===0 ? <div className="empty-state">Nothing shortened yet.</div> : (
+                    <table className="url-table">
+                        <thead><tr>
+                            <th>Short Code</th><th>Destination</th><th style={{textAlign:'right'}}>Clicks</th>
+                        </tr></thead>
+                        <tbody>
+                        {urls.map(u=>(
+                            <tr key={u.id} className={sel===u.shortCode?'sel':''} onClick={()=>setSel(u.shortCode)}>
+                                <td><div className="url-code-cell">/{u.shortCode}</div></td>
+                                <td><div className="url-dest-cell">{u.originalUrl}</div></td>
+                                <td><div className="url-clicks-cell">{u.clickCount}</div></td>
+                            </tr>
+                        ))}
+                        </tbody>
+                    </table>
+                )}
+
+                {analytics && (
+                    <div className="detail-panel">
+                        <div className="detail-heading">/{analytics.shortCode} — Analytics</div>
+                        <div className="stat-trio">
+                            <div className="stat-trio-item"><div className="stat-trio-num">{analytics.totalClicks}</div><div className="stat-trio-lbl">Total Clicks</div></div>
+                            <div className="stat-trio-item"><div className="stat-trio-num">{Object.keys(analytics.clicksByCountry||{}).length}</div><div className="stat-trio-lbl">Countries</div></div>
+                            <div className="stat-trio-item"><div className="stat-trio-num">{analytics.expiresAt}</div><div className="stat-trio-lbl">Expires</div></div>
+                        </div>
+                        <div className="chart-area"><canvas ref={chartRef}/></div>
+                        <div className="breakdown-trio">
+                            {[['Countries',analytics.clicksByCountry],['Devices',analytics.clicksByDevice],['Referrers',analytics.clicksByReferer]].map(([t,d])=>(
+                                <div key={t} className="bd-col">
+                                    <h4>{t}</h4>
+                                    {Object.entries(d||{}).slice(0,5).map(([k,v])=>(<div key={k} className="bd-row"><span className="bd-k">{k}</span><span className="bd-v">{v}</span></div>))}
+                                    {!Object.keys(d||{}).length && <div style={{fontSize:12,color:'#c8c4be',fontStyle:'italic'}}>No data yet</div>}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    function MLPage() {
+        const [stats, setStats] = useState(null);
+        const [testUrl, setTestUrl] = useState('');
+        const [result, setResult] = useState(null);
+        const [testing, setTesting] = useState(false);
+
+        useEffect(()=>{ fetch(`${ML}/ml/stats`).then(r=>r.json()).then(setStats).catch(()=>{}); },[]);
+        const classify = async () => {
+            if (!testUrl.trim()) return; setTesting(true);
+            try { const res = await fetch(`${ML}/ml/classify`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:testUrl})}); setResult(await res.json()); } catch(e){}
+            setTesting(false);
+        };
+        const fmt = v => v?`${(v*100).toFixed(2)}%`:'—';
+
+        return (
+            <div className="page">
+                <div className="ml-header">
+                    <h1>Model Comparison</h1>
+                    <p>Random Forest vs Neural Network — trained on 549,000 real phishing URLs</p>
+                </div>
+
+                {stats ? (
+                    <div className="model-compare">
+                        {[{name:'Random Forest',sub:'100 decision trees · interpretable · n_jobs=-1',color:'#16a34a',
+                            m:[['Accuracy',stats.rf_accuracy,stats.nn_accuracy],['Precision',stats.rf_precision,stats.nn_precision],['Recall',stats.rf_recall,stats.nn_recall],['F1 Score',stats.rf_f1,stats.nn_f1]]},
+                            {name:'Neural Network',sub:'Input(13)→Dense(64)→Dense(32)→Sigmoid',color:'#4f46e5',
+                                m:[['Accuracy',stats.nn_accuracy,stats.rf_accuracy],['Precision',stats.nn_precision,stats.rf_precision],['Recall',stats.nn_recall,stats.rf_recall],['F1 Score',stats.nn_f1,stats.rf_f1]]}
+                        ].map(model=>(
+                            <div key={model.name} className="model-col">
+                                <h3 style={{color:model.color}}>{model.name}</h3>
+                                <div className="model-sub">{model.sub}</div>
+                                {model.m.map(([n,v,o])=>(
+                                    <div key={n} className="metric-row">
+                                        <span className="metric-k">{n}</span>
+                                        <span className="metric-v">{fmt(v)}{v>o&&<span className="win-pill">Winner</span>}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        ))}
+                    </div>
+                ) : <div className="empty-state">Loading model stats…</div>}
+
+                <div className="live-section">
+                    <h3>Try it live</h3>
+                    <div className="input-row">
+                        <input className="url-input" value={testUrl} onChange={e=>setTestUrl(e.target.value)} onKeyDown={e=>e.key==='Enter'&&classify()} placeholder="http://paypal-verify-account.xyz/login or https://google.com"/>
+                        <button className="btn-shorten" onClick={classify} disabled={testing}>{testing?'Scanning…':'Classify →'}</button>
+                    </div>
+                    {result && (
+                        <div className={`classify-result ${result.is_malicious?'bad':'good'}`}>
+                            <div style={{fontFamily:"'Instrument Serif',serif",fontSize:22,marginBottom:8}}>
+                                {result.is_malicious ? '⚠ Malicious URL detected.' : '✓ URL appears safe.'}
+                            </div>
+                            <div style={{fontSize:12,color:'var(--muted)',wordBreak:'break-all'}}>{result.url}</div>
+                            <div className="classify-models">
+                                {[['Random Forest',result.rf_confidence],['Neural Network',result.nn_confidence]].map(([n,c])=>(
+                                    <div key={n}>
+                                        <div className="c-model-lbl">{n}</div>
+                                        <div className={`c-model-val ${c>0.5?'hi':'lo'}`}>{(c*100).toFixed(1)}%</div>
+                                        <div className="bar-track" style={{marginTop:6}}><div className="bar-fill" style={{width:`${c*100}%`,background:c>0.5?'var(--accent)':'#16a34a'}}/></div>
+                                    </div>
+                                ))}
+                                <div>
+                                    <div className="c-model-lbl">Verdict</div>
+                                    <div className={`c-model-val ${result.is_malicious?'hi':'lo'}`} style={{fontSize:18}}>{result.final_verdict}</div>
+                                </div>
+                            </div>
+                            {result.triggered_features?.length>0 && <div className="triggers">Triggers: {result.triggered_features.join(' · ')}</div>}
+                        </div>
+                    )}
+                </div>
+
+                <div>
+                    <div style={{fontSize:11,fontWeight:700,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'1.5px',marginBottom:14}}>Training Data</div>
+                    <div className="train-facts">
+                        {[['549,346','Dataset URLs'],['40,000','Training Samples'],['10,000','Test Samples'],['13','Features/URL'],['87.97%','RF Accuracy'],['85.47%','NN Accuracy']].map(([v,l])=>(
+                            <div key={l} className="fact"><div className="fact-num">{v}</div><div className="fact-lbl">{l}</div></div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
