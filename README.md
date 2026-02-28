@@ -8,9 +8,9 @@ A production-grade URL shortening service with a dual-model ML classifier that s
 
 ## 📸 Screenshots
 
-![SmartURL Home](docs/home.png)
+![SmartURL Home](smarturl/docs/home.png)
 
-![SmartURL ML Models](docs/ml.png)
+![SmartURL ML Models](smarturl/docs/ml.png)
 
 ---
 
